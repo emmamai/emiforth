@@ -4,6 +4,9 @@
 #define PSTACK_SIZE 1024
 #define RSTACK_SIZE PSTACK_SIZE
 
+#define F_TRUE -1
+#define F_FALSE 0
+
 typedef long long mword;
 
 void* np; /* points to next mword */
@@ -46,82 +49,240 @@ typedef struct fword_s {
 fword_t* latest;
 
 #define FCODEWORD( name, fname, flags ) \
-void f_##name ( void ); \
-fword_t name = { \
-	LATEST, \
-	flags, \
-	fname, \
-	{ \
-		f_##name, \
-		NULL \
-	} \
-}; \
-void f_##name ( void )
+void f_##name ( void ); 				\
+fword_t name = { 						\
+	LATEST, 							\
+	flags, 								\
+	fname, 								\
+	{ 									\
+		&f_##name, 						\
+		NULL 							\
+	} 									\
+}; 										\
+void f_##name ( void )					\
 
-#define FTHREADWORD( name, fname, flags ) \
-fword_t name = { \
-	LATEST, \
-	flags, \
-	fname, \
-	{ \
-		DoCol, \
+#define NEXT 	ip = *(void**)np;			\
+                np = np + sizeof( void* ); 	\
+				return	 					\
 
-#define ENDTHREAD \
-		NULL \
-	} \
-};
+FCODEWORD( EXIT, "EXIT", F_NONE ) {
+	np = (void*)rsPop();
+	NEXT;
+}
 
-#define FVAR( name, fname ) \
-mword v_##name; \
-FCODEWORD( name, fname ) { \
-	psPush( &v_##name ); \
-} 
+#define FTHREADWORD( name, fname, flags ) 	\
+fword_t name = { 							\
+	LATEST, 								\
+	flags, 									\
+	fname, 									\
+	{ 										\
+		&DoCol, 							\
 
-#define FCONST( name, fname, val ) \
-FCODEWORD( name, fname, F_NONE ) { \
- 	psPush( val ); \
+#define ENDTHREAD 							\
+		EXIT.thread							\
+	} 										\
+};											\
+
+#define FVAR( name, fname ) 			\
+mword v_##name; 						\
+FCODEWORD( name, fname ) { 				\
+	psPush( &v_##name ); 				\
+} 										\
+
+#define FCONST( name, fname, val ) 			\
+FCODEWORD( name, fname, F_NONE ) { 			\
+ 	psPush( val ); 							\
+} 											\
+
+/** DOCOL *******************************************************************/
+
+void DoCol( void ) {
+	printf( "DoCol\n" );
+	rsPush( (mword)np );
+
+	np = ip + sizeof( void* );
+
+	NEXT;
 }
 
 /** CODEWORDS ***************************************************************/
 
 FCODEWORD( Nop, "NOP", F_NONE ) {
-	;
+	NEXT;
 }
 #undef LATEST
 #define LATEST &Nop
 
+FCODEWORD( Term, "TERM", F_NONE ) {
+	exit( 0 );
+}
+#undef LATEST
+#define LATEST &Nop
+
+
 FCODEWORD( Emit, "EMIT", F_NONE ) {
 	putchar( (char)psPop() );
+    NEXT;
 }
 #undef LATEST
 #define LATEST &Emit
 
 FCODEWORD( Drop, "DROP", F_NONE ) {
 	--psp;
+    NEXT;
 }
 #undef LATEST
 #define LATEST &Drop
 
 FCODEWORD( Swap, "SWAP", F_NONE ) {
-	mword a, b;
+	mword a = psPop(), b = psPop();
 
-	a = psPop();
-	b = psPop();
 	psPush( a );
 	psPush( b );
+
+    NEXT;
 }
 #undef LATEST
 #define LATEST &Swap
 
 FCODEWORD( Dup, "DUP", F_NONE ) {
-	int a;
+	mword a = psPop();
 
-	a = psPop();
 	psPush( a );
 	psPush( a );
+
+	NEXT;
 }
 #undef LATEST
 #define LATEST &Dup
+
+FCODEWORD( Over, "OVER", F_NONE ) {
+	mword a = psPop(), b = psPop();
+
+	psPush( b );
+	psPush( a );
+	psPush( b );
+
+	NEXT;
+}
+#undef LATEST
+#define LATEST &Over
+
+FCODEWORD( Rot, "ROT", F_NONE ) {
+	mword a = psPop(), b = psPop(), c = psPop();
+	psPush( b );
+	psPush( a );
+	psPush( c );
+	NEXT;
+}
+#undef LATEST
+#define LATEST &Rot
+
+FCODEWORD( Nrot, "-ROT", F_NONE ) {
+	mword a = psPop(), b = psPop(), c = psPop();
+	psPush( a );
+	psPush( c );
+	psPush( b );
+	NEXT;
+}
+#undef LATEST
+#define LATEST &Nrot
+
+FCODEWORD( TwoDrop, "2DROP", F_NONE ) {
+	psp -= 2;
+	NEXT;
+}
+#undef LATEST
+#define LATEST &TwoDrop
+
+FCODEWORD( TwoDup, "2DUP", F_NONE ) {
+	mword a = psPop(), b = psPop();
+	psPush( b );
+	psPush( a );
+	psPush( b );
+	psPush( a ); 
+	NEXT;
+}
+#undef LATEST
+#define LATEST &TwoDup
+
+FCODEWORD( Qdup, "?DUP", F_NONE ) {
+	mword a = psPop();
+	psPush( a );
+	if ( a != 0 )
+		psPush( a );
+	NEXT;
+}
+#undef LATEST
+#define LATEST &Qdup
+
+FCODEWORD( Incr, "1+", F_NONE ) {
+	mword a = psPop();
+	psPush( a + 1 );
+	NEXT;
+}
+#undef LATEST
+#define LATEST &Incr
+
+FCODEWORD( Decr, "1-", F_NONE ) {
+	mword a = psPop();
+	psPush( a - 1 );
+	NEXT;
+}
+#undef LATEST
+#define LATEST &Decr
+
+FCODEWORD( FourIncr, "4+", F_NONE ) {
+	mword a = psPop();
+	psPush( a + 4 );
+	NEXT;
+}
+#undef LATEST
+#define LATEST &FourIncr
+
+FCODEWORD( FourDecr, "4-", F_NONE ) {
+	mword a = psPop();
+	psPush( a - 4 );
+	NEXT;
+}
+#undef LATEST
+#define LATEST &FourDecr
+
+FCODEWORD( Add, "+", F_NONE ) {
+	mword a = psPop(), b = psPop();
+	psPush( a + b );
+	NEXT;
+}
+#undef LATEST
+#define LATEST &Add
+
+FCODEWORD( Sub, "-", F_NONE ) {
+	mword a = psPop(), b = psPop();
+	psPush( b - a );
+	NEXT;
+}
+#undef LATEST
+#define LATEST &Sub
+
+FCODEWORD( DivMod, "/MOD", F_NONE ) {
+	mword a = psPop(), b = psPop();
+	psPush( a % b );
+	psPush( a / b );
+	NEXT;
+}
+#undef LATEST
+#define LATEST &DivMod
+
+FCODEWORD( Equ, "=", F_NONE ) {
+	mword a = psPop(), b = psPop();
+	if ( a == b )
+		psPush( F_TRUE );
+	else
+		psPush( F_FALSE );
+	NEXT;
+}
+#undef LATEST
+#define LATEST &Equ
 
 FCODEWORD( Test, "TEST", F_NONE ) {
 	printf( "Test\n" );
@@ -129,6 +290,7 @@ FCODEWORD( Test, "TEST", F_NONE ) {
 	psPush( 'a' );
 	psPush( 'b' );
 	psPush( 'c' );
+	NEXT;
 }
 #undef LATEST
 #define LATEST &Test
@@ -145,42 +307,22 @@ ENDTHREAD
 
 FTHREADWORD( coldboot, "COLDBOOT", F_NONE )
 	test2.thread,
+	Term.thread,
 ENDTHREAD
-
-void DoCol( void ) {
-	printf( "DoCol\n" );
-	rsPush( (mword)np );
-
-	np = ip + (sizeof(void*));
-
-	do {
-		ip = *((void**)np);
-		np = np + sizeof( void* );
-
-		if ( ip ) {
-            func = **((interp_t**)ip);
-			func();
-		}
-	} while ( ip );
-
-	np = (void*)rsPop();
-	printf( "DoCol done\n" );
-}
 
 /** Entry into FORTH proper *************************************************/
 
-void* boot[] = {
-	DoCol,
-	test2.thread,
-	NULL
-};
-
 int main( void ) {
-	rsPush( 0 );
-	np = coldboot.thread;
+	np = 0;
 
-	ip = np;
-	np = np + sizeof( void* );
-	func = **((interp_t**)ip);
-	func();
+    ip = coldboot.thread;
+    func = **((interp_t**)ip);
+
+    np = np + sizeof( void* );
+
+	while ( 1 ) {
+		func();
+		func = **((interp_t**)ip);
+	}
+
 }

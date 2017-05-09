@@ -1,6 +1,6 @@
 OBJS	:= main.o
 DEFINES	:=
-CFLAGS	:= -Wall -O0 -g
+CFLAGS	:= -std=c99 -Wall -Werror -O0 -g
 CC  	:= gcc
 OUT 	:= emiforth
 
