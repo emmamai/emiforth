@@ -2,4 +2,6 @@ bin
 bin/*
 obj
 obj/*
+*.o
+emiforth
 

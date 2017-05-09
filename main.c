@@ -105,7 +105,7 @@ void DoCol( void ) {
 	NEXT;
 }
 
-/** CODEWORDS ***************************************************************/
+/** PRIMITIVE CODEWORDS *****************************************************/
 
 FCODEWORD( Nop, "NOP", F_NONE ) {
 	NEXT;
@@ -284,6 +284,174 @@ FCODEWORD( Equ, "=", F_NONE ) {
 #undef LATEST
 #define LATEST &Equ
 
+FCODEWORD( Nequ, "<>", F_NONE ) {
+	mword a = psPop(), b = psPop();
+	if ( a != b )
+		psPush( F_TRUE );
+	else
+		psPush( F_FALSE );
+	NEXT;
+}
+#undef LATEST
+#define LATEST &Nequ
+
+FCODEWORD( Lt, "<", F_NONE ) {
+	mword a = psPop(), b = psPop();
+	if ( b < a )
+		psPush( F_TRUE );
+	else
+		psPush( F_FALSE );
+	NEXT;
+}
+#undef LATEST
+#define LATEST &Lt
+
+
+FCODEWORD( Gt, ">", F_NONE ) {
+	mword a = psPop(), b = psPop();
+	if ( b > a )
+		psPush( F_TRUE );
+	else
+		psPush( F_FALSE );
+	NEXT;
+}
+#undef LATEST
+#define LATEST &Gt
+
+FCODEWORD( Le, "<=", F_NONE ) {
+	mword a = psPop(), b = psPop();
+	if ( b <= a )
+		psPush( F_TRUE );
+	else
+		psPush( F_FALSE );
+	NEXT;
+}
+#undef LATEST
+#define LATEST &Le
+
+
+FCODEWORD( Ge, ">=", F_NONE ) {
+	mword a = psPop(), b = psPop();
+	if ( b >= a )
+		psPush( F_TRUE );
+	else
+		psPush( F_FALSE );
+	NEXT;
+}
+#undef LATEST
+#define LATEST &Ge
+
+FCODEWORD( Zequ, "0=", F_NONE ) {
+	mword a = psPop();
+	if ( a == 0 )
+		psPush( F_TRUE );
+	else
+		psPush( F_FALSE );
+	NEXT;
+}
+#undef LATEST
+#define LATEST &Zequ
+
+FCODEWORD( Znequ, "0<>", F_NONE ) {
+	mword a = psPop();
+	if ( a != 0 )
+		psPush( F_TRUE );
+	else
+		psPush( F_FALSE );
+	NEXT;
+}
+#undef LATEST
+#define LATEST &Znequ
+
+FCODEWORD( Zlt, "0<", F_NONE ) {
+	mword a = psPop();
+	if ( a < 0 )
+		psPush( F_TRUE );
+	else
+		psPush( F_FALSE );
+	NEXT;
+}
+#undef LATEST
+#define LATEST &Zlt
+
+FCODEWORD( Zgt, "0>", F_NONE ) {
+	mword a = psPop();
+	if ( a > 0 )
+		psPush( F_TRUE );
+	else
+		psPush( F_FALSE );
+	NEXT;
+}
+#undef LATEST
+#define LATEST &Zgt
+
+FCODEWORD( Zle, "0<=", F_NONE ) {
+	mword a = psPop();
+	if ( a <= 0 )
+		psPush( F_TRUE );
+	else
+		psPush( F_FALSE );
+	NEXT;
+}
+#undef LATEST
+#define LATEST &Zle
+
+FCODEWORD( Zge, "0>=", F_NONE ) {
+	mword a = psPop();
+	if ( a >= 0 )
+		psPush( F_TRUE );
+	else
+		psPush( F_FALSE );
+	NEXT;
+}
+#undef LATEST
+#define LATEST &Zge
+
+FCODEWORD( And, "AND", F_NONE ) {
+	mword a = psPop(), b = psPop();
+	psPush( a & b );
+	NEXT;
+}
+#undef LATEST
+#define LATEST &And
+
+FCODEWORD( Or, "OR", F_NONE ) {
+	mword a = psPop(), b = psPop();
+	psPush( a | b );
+	NEXT;
+}
+#undef LATEST
+#define LATEST &Or
+
+FCODEWORD( Xor, "XOR", F_NONE ) {
+	mword a = psPop(), b = psPop();
+	psPush( a ^ b );
+	NEXT;
+}
+#undef LATEST
+#define LATEST &Xor
+
+FCODEWORD( Invert, "INVERT", F_NONE ) {
+	mword a = psPop();
+	psPush( ~a );
+	NEXT;
+}
+#undef LATEST
+#define LATEST &And
+
+FCODEWORD( Lit, "LIT", F_NONE ) {
+	mword a = *(mword*)np;			\
+    psPush( a );
+    np = np + sizeof( void* ); 	\
+	NEXT;
+}
+#undef LATEST
+#define LATEST &And
+
+#define LITERAL( x ) 	\
+Lit.thread, 			\
+(void*) x				\
+
 FCODEWORD( Test, "TEST", F_NONE ) {
 	printf( "Test\n" );
 	psPush( '\n' );
@@ -299,6 +467,7 @@ FCODEWORD( Test, "TEST", F_NONE ) {
 
 FTHREADWORD( test2, "TEST2", F_NONE )
 	Test.thread,
+	LITERAL( '@' ),
 	Emit.thread,
 	Emit.thread,
 	Emit.thread,
